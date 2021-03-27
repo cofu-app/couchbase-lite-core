@@ -294,7 +294,7 @@ namespace litecore::net {
         if (result != ERROR_SUCCESS) {
             // If any of these are between 100 and 140 they will be reported
             // incorrectly
-            error(error::Domain::POSIX, result)._throw();
+            error::make_error(error::Domain::POSIX, result)._throw();
         }
 
         PIP_ADAPTER_ADDRESSES current = info;

@@ -175,7 +175,9 @@ C4Error c4error_make(C4ErrorDomain domain, int code, C4String message) noexcept 
     ErrorInfo info;
     if (message.size > 0)
         info.message = string(slice(message));
-    return ErrorTable::instance().makeError(domain, code, move(info));
+
+    error converted = error::make_error(static_cast<error::Domain>(domain), code);
+    return ErrorTable::instance().makeError(static_cast<C4ErrorDomain>(converted.domain), converted.code, move(info));
 }
 
 
@@ -183,7 +185,9 @@ __cold
 C4Error c4error_printf(C4ErrorDomain domain, int code, const char *format, ...) noexcept {
     va_list args;
     va_start(args, format);
-    C4Error error = ErrorTable::instance().vmakeError(domain, code, format, args);
+
+    error converted = error::make_error(static_cast<error::Domain>(domain), code);
+    C4Error error = ErrorTable::instance().vmakeError(static_cast<C4ErrorDomain>(converted.domain), converted.code, format, args);
     va_end(args);
     return error;
 }
@@ -191,14 +195,16 @@ C4Error c4error_printf(C4ErrorDomain domain, int code, const char *format, ...) 
 
 __cold
 C4Error c4error_vprintf(C4ErrorDomain domain, int code, const char *format, va_list args) noexcept {
-    return ErrorTable::instance().vmakeError(domain, code, format, args);
+    error converted = error::make_error(static_cast<error::Domain>(domain), code);
+    return ErrorTable::instance().vmakeError(static_cast<C4ErrorDomain>(converted.domain), converted.code, format, args);
 }
-
 
 __cold
 void c4error_return(C4ErrorDomain domain, int code, C4String message, C4Error *outError) noexcept {
-    if (outError)
-        *outError = ErrorTable::instance().makeError(domain, code, {string(slice(message))});
+    if (outError) {
+        error converted = error::make_error(static_cast<error::Domain>(domain), code);
+        *outError = ErrorTable::instance().makeError(static_cast<C4ErrorDomain>(converted.domain), converted.code, {string(slice(message))});
+    }
 }
 
 
@@ -216,7 +222,7 @@ static string getErrorMessage(C4Error err) {
         return info->message;
     } else {
         // No; get the regular error message for this domain/code:
-        return error((error::Domain)err.domain, err.code).what();
+        return error::_what(static_cast<error::Domain>(err.domain), err.code);
     }
 }
 
@@ -342,7 +348,8 @@ static bool errorIsInSet(C4Error err, ErrorSet set) {
 __cold
 bool c4error_mayBeTransient(C4Error err) noexcept {
     static CodeList kTransientPOSIX = {
-        ENETRESET, ECONNABORTED, ECONNRESET, ETIMEDOUT, ECONNREFUSED, 0};
+        error::NetworkReset, error::ConnectionAborted, error::ConnectionReset,
+        error::TimedOut, error::ConnectionRefused, 0};
 
     static CodeList kTransientNetwork = {
         kC4NetErrDNSFailure,
@@ -372,12 +379,8 @@ bool c4error_mayBeTransient(C4Error err) noexcept {
 __cold
 bool c4error_mayBeNetworkDependent(C4Error err) noexcept {
     static CodeList kUnreachablePOSIX = {
-        ENETDOWN, ENETUNREACH, ENOTCONN, ETIMEDOUT,
-#ifndef _MSC_VER
-        EHOSTDOWN, // Doesn't exist on Windows
-#endif
-        EHOSTUNREACH,EADDRNOTAVAIL,
-        EPIPE, 0};
+        error::NetworkDown, error::NetworkUnreachable, error::NotConnected, error::TimedOut,
+        error::HostDown, error::HostUnreachable, error::AddressNotAvailable, error::BrokenPipe, 0 };
 
     static CodeList kUnreachableNetwork = {
         kC4NetErrDNSFailure,

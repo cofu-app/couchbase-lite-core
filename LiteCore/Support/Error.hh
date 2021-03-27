@@ -90,13 +90,110 @@ namespace litecore {
             NumLiteCoreErrorsPlus1
         };
 
+        // Standardized errors in POSIX domain.  These each correspond to a
+        // POSIX errno (see kPOSIXMapping for details) and start at an arbitrary
+        // 500 to be able to tell the difference at error creation time between
+        // an error that needs to be standardized, and an error that is already
+        // standardized.  You can still throw a POSIX domain error using a system
+        // errno code, and it will be mapped to one of these (except for the few
+        // marked otherwise)
+        enum PosixError {
+            MinPosixErrorMinus1 = 499,
+
+            AddressFamilyNotSupported,
+            AddressInUse,
+            AddressNotAvailable,
+            AlreadyConnected,
+            ArgumentListTooLong,
+            ArgumentOutOfDomain,
+            BadAddress,
+            BadFileDescriptor,
+            BadMessage,
+            BrokenPipe,
+            ConnectionAborted,
+            ConnectionAlreadyInProgress,
+            ConnectionRefused,
+            ConnectionReset,
+            CrossDeviceLink,
+            DestinationAddressRequired,
+            DeviceOrResourceBusy,
+            DirectoryNotEmpty,
+            ExecutableFormatError,
+            FileExists,
+            FileTooLarge,
+            FilenameTooLong,
+            FunctionNotSupported,
+            HostDown,
+            HostUnreachable,
+            IdentifierRemoved,
+            IllegalByteSequence,
+            InappropriateIOControlOperation,
+            Interrupted,
+            InvalidArgument,
+            InvalidSeek,
+            /*IOError, */ // LiteCore IOError used instead
+            IsADirectory = InvalidSeek + 2,
+            MessageSize,
+            NetworkDown,
+            NetworkReset,
+            NetworkUnreachable,
+            NoBufferSpace,
+            NoChildProcess,
+            NoLink,
+            NoLockAvailable,
+            NoMessage,
+            NoMessageAvailable,
+            NoProtocolOption,
+            NoSpaceOnDevice,
+            NoStreamResources,
+            NoSuchDevice,
+            NoSuchDeviceOrAddress,
+            /*NoSuchFileOrDirectory, */ // LiteCore NotFound used instead
+            NoSuchProcess = NoSuchDeviceOrAddress + 2,
+            NotADirectory,
+            NotASocket,
+            NotAStream,
+            NotConnected,
+            NotEnoughMemory,
+            NotSupported,
+            OperationCanceled,
+            OperationInProgress,
+            OperationNotPermitted,
+            OperationNotSupported,
+            OperationWouldBlock,
+            OwnerDead,
+            PermissionDenied,
+            ProtocolError,
+            ProtocolNotSupported,
+            ReadOnlyFileSystem,
+            ResourceDeadlockWouldOccur,
+            ResourceUnavailableTryAgain,
+            ResultOutOfRange,
+            StateNotRecoverable,
+            StreamTimeout,
+            TextFileBusy,
+            TimedOut,
+            TooManyFilesOpen,
+            TooManyFilesOpenInSystem,
+            TooManyLinks,
+            TooManySymbolicLinkLevels,
+            ValueTooLarge,
+            WrongProtocolType,
+
+            // Add new codes here. You MUST associate it with a specific POSIX errno
+            // You MUST add corresponding kC4Err codes to the enum in C4Base.h!
+            
+            MaxPosixErrorPlus1
+        };
+
         //---- Data members:
         Domain const domain;
         int const code;
         std::shared_ptr<fleece::Backtrace> backtrace;
 
-        error (Domain, int code );
-        error(error::Domain, int code, const std::string &what);
+        static error make_error(Domain, int code );
+        static error make_error(error::Domain, int code, const std::string &what);
+   
         explicit error (LiteCoreError e)     :error(LiteCore, e) {}
 
         error& operator= (const error &e);
@@ -137,6 +234,10 @@ namespace litecore {
 
         static bool sWarnOnError;
         static bool sCaptureBacktraces;
+
+    private:
+        error (Domain, int code );
+        error(error::Domain, int code, const std::string &what);
     };
 
 

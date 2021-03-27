@@ -83,7 +83,7 @@ namespace litecore {
             va_end(args);
 
             Warn("Invalid LiteCore query: %s", message.c_str());
-            throw error(error::LiteCore, error::InvalidQuery, message);
+            throw error::make_error(error::LiteCore, error::InvalidQuery, message);
         }
 
 

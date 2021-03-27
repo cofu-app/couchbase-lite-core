@@ -139,7 +139,7 @@ namespace litecore {
                     const char *what = x.what();
                     if (!what)
                         what = "exception";
-                    throw error(x.domain, x.code,
+                    throw error::make_error(x.domain, x.code,
                                 format("%s, converting doc \"%.*s\"", what, SPLAT(docID)));
                 }
             }

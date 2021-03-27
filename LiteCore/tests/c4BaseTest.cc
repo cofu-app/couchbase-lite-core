@@ -26,6 +26,7 @@
 #include <exception>
 #include <chrono>
 #include <thread>
+#include <unordered_set>
 #ifdef WIN32
 #include <winerror.h>
 #endif
@@ -66,19 +67,101 @@ TEST_CASE("C4Error messages") {
         }
     }
 
+    C4Error err;
+    ExpectingExceptions e;
+    vector<int> allErrs = {
+        EAFNOSUPPORT, EADDRINUSE, EADDRNOTAVAIL, EISCONN, E2BIG, EDOM, EFAULT, EBADF,
+        EBADMSG, EPIPE, ECONNABORTED, EALREADY, ECONNREFUSED, ECONNRESET, EXDEV,
+        EDESTADDRREQ, EBUSY, ENOTEMPTY, ENOEXEC, EEXIST, EFBIG, ENAMETOOLONG, ENOSYS,
+        EHOSTUNREACH, EIDRM, EILSEQ, ENOTTY, EINTR, EINVAL, ESPIPE, EIO, EISDIR,
+        EMSGSIZE, ENETDOWN, ENETRESET, ENETUNREACH, ENOBUFS, ECHILD, ENOLINK, ENOMSG,
+        ENODATA, ENOPROTOOPT, ENOSPC, ENOSR, ENODEV, ENXIO, ENOENT, ESRCH, ENOTDIR,
+        ENOTSOCK, ENOSTR, ENOTCONN, ENOMEM, ENOTSUP, ECANCELED, EINPROGRESS, EPERM,
+        EOPNOTSUPP, EWOULDBLOCK, EOWNERDEAD, EACCES, EPROTO, EPROTONOSUPPORT, EROFS,
+        EDEADLK, EAGAIN, ERANGE, ENOTRECOVERABLE, ETIME, ETXTBSY, ETIMEDOUT, EMFILE,
+        ENFILE, EMLINK, ELOOP, EOVERFLOW, EPROTOTYPE
+    };
+
+    vector<int> allResults = {
+        kC4PosixErrAddressFamilyNotSupported, kC4PosixErrAddressInUse, kC4PosixErrAddressNotAvailable,
+        kC4PosixErrAlreadyConnected, kC4PosixErrArgumentListTooLong, kC4PosixErrArgumentOutOfDomain,
+        kC4PosixErrBadAddress, kC4PosixErrBadFileDescriptor, kC4PosixErrBadMessage, kC4PosixErrBrokenPipe,
+        kC4PosixErrConnectionAborted, kC4PosixErrConnectionAlreadyInProgress, kC4PosixErrConnectionRefused,
+        kC4PosixErrConnectionReset, kC4PosixErrCrossDeviceLink, kC4PosixErrDestinationAddressRequired,
+        kC4PosixErrDeviceOrResourceBusy, kC4PosixErrDirectoryNotEmpty, kC4PosixErrExecutableFormatError,
+        kC4PosixErrFileExists, kC4PosixErrFileTooLarge, kC4PosixErrFilenameTooLong, kC4PosixErrFunctionNotSupported,
+        kC4PosixErrHostUnreachable, kC4PosixErrIdentifierRemoved, kC4PosixErrIllegalByteSequence,
+        kC4PosixErrInappropriateIOControlOperation, kC4PosixErrInterrupted, kC4PosixErrInvalidArgument,
+        kC4PosixErrInvalidSeek, kC4ErrorIOError, kC4PosixErrIsADirectory, kC4PosixErrMessageSize,
+        kC4PosixErrNetworkDown, kC4PosixErrNetworkReset, kC4PosixErrNetworkUnreachable, kC4PosixErrNoBufferSpace,
+        kC4PosixErrNoChildProcess, kC4PosixErrNoLink, kC4PosixErrNoMessage, kC4PosixErrNoMessageAvailable,
+        kC4PosixErrNoProtocolOption, kC4PosixErrNoSpaceOnDevice, kC4PosixErrNoStreamResources,
+        kC4PosixErrNoSuchDevice, kC4PosixErrNoSuchDeviceOrAddress, kC4ErrorNotFound, kC4PosixErrNoSuchProcess,
+        kC4PosixErrNotADirectory, kC4PosixErrNotASocket, kC4PosixErrNotAStream, kC4PosixErrNotConnected,
+        kC4PosixErrNotEnoughMemory, kC4PosixErrNotSupported, kC4PosixErrOperationCanceled, kC4PosixErrOperationInProgress,
+        kC4PosixErrOperationNotPermitted, kC4PosixErrOperationNotSupported, kC4PosixErrOperationWouldBlock,
+        kC4PosixErrOwnerDead, kC4PosixErrPermissionDenied, kC4PosixErrProtocolError, kC4PosixErrProtocolNotSupported,
+        kC4PosixErrReadOnlyFileSystem, kC4PosixErrResourceDeadlockWouldOccur, kC4PosixErrResourceUnavailableTryAgain,
+        kC4PosixErrResultOutOfRange, kC4PosixErrStateNotRecoverable, kC4PosixErrStreamTimeout, kC4PosixErrTextFileBusy,
+        kC4PosixErrTimedOut, kC4PosixErrTooManyFilesOpen, kC4PosixErrTooManyFilesOpenInSystem, kC4PosixErrTooManyLinks,
+        kC4PosixErrTooManySymbolicLinkLevels, kC4PosixErrValueTooLarge, kC4PosixErrWrongProtocolType
+    };
+
+#ifdef ENOLOCK
+    allErrs.push_back(ENOLOCK);
+    allResults.push_back(kC4PosixErrNoLockAvailable);
+#endif
+
+#ifdef EHOSTDOWN
+    allErrs.push_back(EHOSTDOWN);
+    allResults.push_back(kC4PosixErrHostDown);
+#endif
+
+    REQUIRE(allErrs.size() == allResults.size());
+
+    int idx = 0;
+    for(const int& i : allErrs) {
+        try {
+            error::_throw(error::POSIX, i);
+            FAIL("Exception wasn't thrown");
+        } catchError(&err)
+
+        alloc_slice message = c4error_getMessage(err);
+        string messageStr = string(message);
+        if(i == ENOENT) {
+            CHECK(messageStr == "not found");
+            CHECK(err.domain == LiteCoreDomain);
+        } else if(i == EIO) {
+            CHECK(messageStr == "file I/O error");
+            CHECK(err.domain == LiteCoreDomain);
+        } else {
+            CHECK(messageStr.find("Unknown error") == -1);
+            CHECK(err.domain == POSIXDomain);
+        }
+
+        CHECK(err.code == allResults[idx++]);
+    }
+
 #ifdef WIN32
-    const long errs[] = { WSAEADDRINUSE, WSAEADDRNOTAVAIL, WSAEAFNOSUPPORT, WSAEALREADY,
+    const long wsaErrs[] = { WSAEADDRINUSE, WSAEADDRNOTAVAIL, WSAEAFNOSUPPORT, WSAEALREADY,
                           WSAECANCELLED, WSAECONNABORTED, WSAECONNREFUSED, WSAECONNRESET,
                           WSAEDESTADDRREQ, WSAEHOSTUNREACH, WSAEINPROGRESS, WSAEISCONN,
                           WSAELOOP, WSAEMSGSIZE, WSAENETDOWN, WSAENETRESET,
                           WSAENETUNREACH, WSAENOBUFS, WSAENOPROTOOPT, WSAENOTCONN,
                           WSAENOTSOCK, WSAEOPNOTSUPP, WSAEPROTONOSUPPORT, WSAEPROTOTYPE,
                           WSAETIMEDOUT, WSAEWOULDBLOCK };
-    for(const auto err: errs) {
-        error errObj(error::Domain::POSIX, int(err));
-        string msg = errObj.what();
-        CHECK(msg.find("Unknown error") == -1); // Should have a valid error message
-        CHECK(errObj.code != err); // Should be remapped to standard POSIX code
+
+    for(const auto wsaErr: wsaErrs) {
+        try {
+            error::_throw(error::POSIX, wsaErr);
+        } catchError(&err)
+
+        alloc_slice message = c4error_getMessage(err);
+        string messageStr = string(message);
+        CHECK(messageStr.find("Unknown error") == -1);
+        CHECK(err.domain == POSIXDomain);
+        CHECK(err.code > error::MinPosixErrorMinus1);
+        CHECK(err.code < error::MaxPosixErrorPlus1);
     }
 #endif
 }
@@ -87,7 +170,7 @@ TEST_CASE("C4Error exceptions") {
     ++gC4ExpectExceptions;
     C4Error error;
     try {
-        throw litecore::error(litecore::error::LiteCore,
+        throw litecore::error::make_error(litecore::error::LiteCore,
                               litecore::error::InvalidParameter,
                               "Oops");
         FAIL("Exception wasn't thrown");

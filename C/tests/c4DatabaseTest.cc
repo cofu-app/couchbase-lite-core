@@ -78,7 +78,12 @@ N_WAY_TEST_CASE_METHOD(C4DatabaseTest, "Database ErrorMessages", "[Database][Err
     assertMessage(SQLiteDomain, SQLITE_IOERR_ACCESS, "SQLite error 3338", "disk I/O error (3338)");
     assertMessage(SQLiteDomain, SQLITE_IOERR, "SQLite error 10", "disk I/O error");
     assertMessage(LiteCoreDomain, 15, "LiteCore CorruptData", "data is corrupted");
-    assertMessage(POSIXDomain, ENOENT, "POSIX error 2", "No such file or directory");
+
+    // This is a compromise I had to make, it's too much of an uprooting to get C4Error to convert itself from this side
+    // C++ error throwing will do a POSIX conversion, including a domain change if necessary.  The old way continues to function
+    // as it did before, and additionally the new platform independent codes also work.
+    assertMessage(POSIXDomain, ENOENT, "POSIX error 2", "No such file or directory"); // Old way
+    assertMessage(POSIXDomain, kC4PosixErrFileExists, "POSIX error 519", "File exists"); // New way
     assertMessage(LiteCoreDomain, kC4ErrorTransactionNotClosed, "LiteCore TransactionNotClosed", "transaction not closed");
     assertMessage(SQLiteDomain, -1234, "SQLite error -1234", "unknown error (-1234)");
     assertMessage((C4ErrorDomain)666, -1234, "INVALID_DOMAIN error -1234", "invalid C4Error (unknown domain)");
@@ -691,7 +696,7 @@ N_WAY_TEST_CASE_METHOD(C4DatabaseTest, "Database copy", "[Database][C]") {
         ExpectingExceptions x;
         REQUIRE(!c4db_copyNamed(c4str(srcPathStr.c_str()), kNuName, &config, &error));
         CHECK(error.domain == POSIXDomain);
-        CHECK(error.code == EEXIST);
+        CHECK(error.code == kC4PosixErrFileExists);
     }
 
     nudb = c4db_openNamed(kNuName, &config, ERROR_INFO());

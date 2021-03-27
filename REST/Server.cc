@@ -119,7 +119,7 @@ namespace litecore { namespace REST {
                 }
             }
             if (!addr)
-                throw error(error::Network, kC4NetErrUnknownHost,
+                throw error::make_error(error::Network, kC4NetErrUnknownHost,
                             "Unknown network interface name or address");
         }
         return addr->sockppAddress(port);

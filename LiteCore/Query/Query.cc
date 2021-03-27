@@ -57,8 +57,8 @@ namespace litecore {
 
 
     Query::parseError::parseError(const char *message, int errPos)
-    :error(error::LiteCore, error::InvalidQuery,
-           format("%s near character %d", message, errPos+1))
+    :error(make_error(LiteCore, error::InvalidQuery,
+           format("%s near character %d", message, errPos+1)))
     ,errorPosition(errPos)
     { }
 
