@@ -202,12 +202,16 @@ namespace litecore {
         {ENOSTR,                        error::POSIX,       error::NotAStream},
         {ENOTCONN,                      error::POSIX,       error::NotConnected},
         {ENOMEM,                        error::POSIX,       error::NotEnoughMemory},
+#if ENOTSUP != EOPNOTSUPP
         {ENOTSUP,                       error::POSIX,       error::NotSupported},
+#endif
         {ECANCELED,                     error::POSIX,       error::OperationCanceled},
         {EINPROGRESS,                   error::POSIX,       error::OperationInProgress},
         {EPERM,                         error::POSIX,       error::OperationNotPermitted},
         {EOPNOTSUPP,                    error::POSIX,       error::OperationNotSupported},
+#if EWOULDBLOCK != EAGAIN
         {EWOULDBLOCK,                   error::POSIX,       error::OperationWouldBlock},
+#endif
         {EOWNERDEAD,                    error::POSIX,       error::OwnerDead},
         {EACCES,                        error::POSIX,       error::PermissionDenied},
         {EPROTO,                        error::POSIX,       error::ProtocolError},

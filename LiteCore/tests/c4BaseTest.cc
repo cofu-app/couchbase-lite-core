@@ -76,8 +76,8 @@ TEST_CASE("C4Error messages") {
         EHOSTUNREACH, EIDRM, EILSEQ, ENOTTY, EINTR, EINVAL, ESPIPE, EIO, EISDIR,
         EMSGSIZE, ENETDOWN, ENETRESET, ENETUNREACH, ENOBUFS, ECHILD, ENOLINK, ENOMSG,
         ENODATA, ENOPROTOOPT, ENOSPC, ENOSR, ENODEV, ENXIO, ENOENT, ESRCH, ENOTDIR,
-        ENOTSOCK, ENOSTR, ENOTCONN, ENOMEM, ENOTSUP, ECANCELED, EINPROGRESS, EPERM,
-        EOPNOTSUPP, EWOULDBLOCK, EOWNERDEAD, EACCES, EPROTO, EPROTONOSUPPORT, EROFS,
+        ENOTSOCK, ENOSTR, ENOTCONN, ENOMEM, ECANCELED, EINPROGRESS, EPERM,
+        EOPNOTSUPP, EOWNERDEAD, EACCES, EPROTO, EPROTONOSUPPORT, EROFS,
         EDEADLK, EAGAIN, ERANGE, ENOTRECOVERABLE, ETIME, ETXTBSY, ETIMEDOUT, EMFILE,
         ENFILE, EMLINK, ELOOP, EOVERFLOW, EPROTOTYPE
     };
@@ -98,14 +98,24 @@ TEST_CASE("C4Error messages") {
         kC4PosixErrNoProtocolOption, kC4PosixErrNoSpaceOnDevice, kC4PosixErrNoStreamResources,
         kC4PosixErrNoSuchDevice, kC4PosixErrNoSuchDeviceOrAddress, kC4ErrorNotFound, kC4PosixErrNoSuchProcess,
         kC4PosixErrNotADirectory, kC4PosixErrNotASocket, kC4PosixErrNotAStream, kC4PosixErrNotConnected,
-        kC4PosixErrNotEnoughMemory, kC4PosixErrNotSupported, kC4PosixErrOperationCanceled, kC4PosixErrOperationInProgress,
-        kC4PosixErrOperationNotPermitted, kC4PosixErrOperationNotSupported, kC4PosixErrOperationWouldBlock,
+        kC4PosixErrNotEnoughMemory, kC4PosixErrOperationCanceled, kC4PosixErrOperationInProgress,
+        kC4PosixErrOperationNotPermitted, kC4PosixErrOperationNotSupported, 
         kC4PosixErrOwnerDead, kC4PosixErrPermissionDenied, kC4PosixErrProtocolError, kC4PosixErrProtocolNotSupported,
         kC4PosixErrReadOnlyFileSystem, kC4PosixErrResourceDeadlockWouldOccur, kC4PosixErrResourceUnavailableTryAgain,
         kC4PosixErrResultOutOfRange, kC4PosixErrStateNotRecoverable, kC4PosixErrStreamTimeout, kC4PosixErrTextFileBusy,
         kC4PosixErrTimedOut, kC4PosixErrTooManyFilesOpen, kC4PosixErrTooManyFilesOpenInSystem, kC4PosixErrTooManyLinks,
         kC4PosixErrTooManySymbolicLinkLevels, kC4PosixErrValueTooLarge, kC4PosixErrWrongProtocolType
     };
+
+#if ENOTSUP != EOPNOTSUPP
+    allErrs.push_back(ENOTSUP);
+    allResults.push_back(kC4PosixErrNotSupported);
+#endif
+
+#if EWOULDBLOCK != EAGAIN
+    allErrs.push_back(EWOULDBLOCK);
+    allResults.push_back(kC4PosixErrOperationWouldBlock);
+#endif
 
 #ifdef ENOLOCK
     allErrs.push_back(ENOLOCK);
@@ -139,6 +149,7 @@ TEST_CASE("C4Error messages") {
             CHECK(err.domain == POSIXDomain);
         }
 
+	INFO(string("Checking errno ") + to_string(i));	
         CHECK(err.code == allResults[idx++]);
     }
 
