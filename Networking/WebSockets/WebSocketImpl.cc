@@ -97,13 +97,33 @@ namespace litecore { namespace websocket {
         startResponseTimer(chrono::seconds(kConnectTimeoutSecs));
     }
 
+    void WebSocketImpl::gotTLSCertificate(slice certData) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (_closed) {
+            warn("WebSocket already closed, ignoring onWebSocketGotTLSCertificate...");
+            return;
+        }
+
+        logInfo("Got TLS certificate");
+        delegate().onWebSocketGotTLSCertificate(certData);
+    }
 
     void WebSocketImpl::gotHTTPResponse(int status, const websocket::Headers &headersFleece) {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (_closed) {
+            warn("WebSocket already closed, ignoring gotHTTPResponse...");
+            return;
+        }
+
         logInfo("Got HTTP response (status %d)", status);
         delegate().onWebSocketGotHTTPResponse(status, headersFleece);
     }
 
     void WebSocketImpl::onConnect() {
+        std::lock_guard<std::mutex> lock(_mutex);
+        
         if(_closed) {
             // If the WebSocket has already been closed, which only happens in rare cases
             // such as stopping a Replicator during the connecting phase, then don't continue...
@@ -369,17 +389,21 @@ namespace litecore { namespace websocket {
 
     // Initiates a request to close the connection cleanly.
     void WebSocketImpl::close(int status, fleece::slice message) {
-        if(!_didConnect && _framing) {
-            // The web socket is being requested to close before it's even connected, so just
-            // shortcut to the callback and make sure that onConnect does nothing now
-            closeSocket();
-            _closed = true;
-            
-            // CBL-1088: If this is not called here, it never will be since the above _closed = true
-            // prevents it from happening later.  This means that the Replicator using this connection
-            // will never be informed of the connection close and will never reach the stopped state
-            delegate().onWebSocketClose({kWebSocketClose, status, message});
-            return;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            if(!_didConnect && _framing) {
+
+                // The web socket is being requested to close before it's even connected, so just
+                // shortcut to the callback and make sure that onConnect does nothing now
+                closeSocket();
+                _closed = true;
+                
+                // CBL-1088: If this is not called here, it never will be since the above _closed = true
+                // prevents it from happening later.  This means that the Replicator using this connection
+                // will never be informed of the connection close and will never reach the stopped state
+                delegate().onWebSocketClose({kWebSocketClose, status, message});
+                return;
+            }
         }
         
         logInfo("Requesting close with status=%d, message='%.*s'", status, SPLAT(message));
